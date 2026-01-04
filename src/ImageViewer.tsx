@@ -1,11 +1,4 @@
-import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  Show,
-  untrack,
-} from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show, untrack } from "solid-js";
 import { useTerminalDimensions } from "@opentui/solid";
 import { createJimp } from "@jimp/core";
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp";
@@ -87,11 +80,7 @@ export function ImageViewer(props: ImageViewerProps) {
             const topY = y * 2;
             const bottomY = topY + 1;
 
-            const {
-              r: tr,
-              g: tg,
-              b: tb,
-            } = intToRGBA(image.getPixelColor(x, topY));
+            const { r: tr, g: tg, b: tb } = intToRGBA(image.getPixelColor(x, topY));
             let br = tr,
               bg = tg,
               bb = tb;
@@ -141,9 +130,7 @@ export function ImageViewer(props: ImageViewerProps) {
         <For each={rows()}>
           {(row) => (
             <text>
-              <For each={row.pixels}>
-                {(p) => <span style={{ fg: p.fg, bg: p.bg }}>▀</span>}
-              </For>
+              <For each={row.pixels}>{(p) => <span style={{ fg: p.fg, bg: p.bg }}>▀</span>}</For>
             </text>
           )}
         </For>

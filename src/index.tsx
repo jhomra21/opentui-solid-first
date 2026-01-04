@@ -1,25 +1,11 @@
 import { render, useKeyboard, useRenderer } from "@opentui/solid";
-import {
-  Show,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-} from "solid-js";
+import { Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { readdir } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 import { ImageViewer } from "./ImageViewer";
 import { AsciiAnimation } from "./AsciiAnimation";
 
-const IMAGE_EXTENSIONS = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".bmp",
-  ".gif",
-  ".webp",
-  ".tiff",
-]);
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff"]);
 
 type BrowserItem =
   | { kind: "up"; path: string }
@@ -33,12 +19,11 @@ function isImageFile(name: string) {
 }
 
 function App() {
-  const renderer = useRenderer();
   const [currentDir, setCurrentDir] = createSignal(process.cwd());
   const [imagePath, setImagePath] = createSignal("./test.png");
-  const [browserItems, setBrowserItems] = createSignal<
-    Array<{ name: string; value: BrowserItem }>
-  >([]);
+  const [browserItems, setBrowserItems] = createSignal<Array<{ name: string; value: BrowserItem }>>(
+    [],
+  );
   const [browserLoading, setBrowserLoading] = createSignal(true);
   const [browserError, setBrowserError] = createSignal<string | null>(null);
   const [selectedIndex, setSelectedIndex] = createSignal(0);
