@@ -1,8 +1,10 @@
-import { createEffect, createSignal, For, onCleanup, untrack } from "solid-js"
+import { createEffect, createSignal, For, onCleanup, Show, untrack } from "solid-js"
 import { useTerminalDimensions } from "@opentui/solid"
 import { createJimp } from "@jimp/core"
 import { defaultFormats, defaultPlugins, intToRGBA } from "jimp"
 import webp from "@jimp/wasm-webp"
+
+const Jimp = createJimp({ formats: [...defaultFormats, webp], plugins: defaultPlugins })
 
 interface ImageViewerProps {
   src: string
@@ -14,8 +16,6 @@ interface PixelRow {
   y: number
   pixels: Array<{ x: number; fg: string; bg: string }>
 }
-
-const Jimp = createJimp({ formats: [...defaultFormats, webp], plugins: defaultPlugins })
 
 function rgbToHex(r: number, g: number, b: number) {
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`
@@ -43,19 +43,32 @@ export function ImageViewer(props: ImageViewerProps) {
         const image = await Jimp.read(src)
         if (cancelled) return
 
-        const dims = untrack(() => dimensions())
-        const maxW = props.maxWidth ?? Math.min(dims.width - 4, 60)
-        const maxH = props.maxHeight ?? Math.min((dims.height - 6) * 2, 40)
+        const originalW = image.width
+        const originalH = image.height
 
-        if (image.width > maxW || image.height > maxH) {
-          image.scaleToFit({ w: maxW, h: maxH })
+        const dims = untrack(() => dimensions())
+        // Use available terminal space, accounting for left panel (40 cols + 2 margin + 1 padding)
+        const availableW = props.maxWidth ?? dims.width - 45
+        // Each terminal row shows 2 pixel rows via half-blocks, account for header text
+        const availableH = props.maxHeight ?? (dims.height - 4) * 2
+
+        const targetW = Math.max(1, availableW)
+        const targetH = Math.max(1, availableH)
+
+        if (image.width > targetW || image.height > targetH) {
+          image.scaleToFit({ w: targetW, h: targetH })
         }
 
         const imgW = image.width
         const imgH = image.height
         const termH = Math.ceil(imgH / 2)
 
-        setImageInfo(`${imgW}x${imgH}px → ${imgW}x${termH} cells`)
+        const scaled = imgW !== originalW || imgH !== originalH
+        setImageInfo(
+          scaled
+            ? `${originalW}x${originalH}px → ${imgW}x${termH} cells`
+            : `${imgW}x${termH} cells`,
+        )
 
         const rowData: PixelRow[] = []
         for (let y = 0; y < termH; y++) {
@@ -65,17 +78,21 @@ export function ImageViewer(props: ImageViewerProps) {
             const bottomY = topY + 1
 
             const { r: tr, g: tg, b: tb } = intToRGBA(image.getPixelColor(x, topY))
-            let br = tr, bgG = tg, bb = tb
+            let br = tr,
+              bg = tg,
+              bb = tb
 
             if (bottomY < imgH) {
               const rgba = intToRGBA(image.getPixelColor(x, bottomY))
-              br = rgba.r; bgG = rgba.g; bb = rgba.b
+              br = rgba.r
+              bg = rgba.g
+              bb = rgba.b
             }
 
             pixels.push({
               x,
               fg: rgbToHex(tr, tg, tb),
-              bg: rgbToHex(br, bgG, bb),
+              bg: rgbToHex(br, bg, bb),
             })
           }
           rowData.push({ y, pixels })
@@ -97,16 +114,20 @@ export function ImageViewer(props: ImageViewerProps) {
 
   return (
     <box flexDirection="column">
-      {loading() && <text>Loading image...</text>}
-      {error() && <text>Error: {error()}</text>}
-      {imageInfo() && <text>{imageInfo()}</text>}
+      <Show when={loading()}>
+        <text>Loading image...</text>
+      </Show>
+      <Show when={error()}>
+        <text>Error: {error()}</text>
+      </Show>
+      <Show when={imageInfo()}>
+        <text>{imageInfo()}</text>
+      </Show>
       <box flexDirection="column" marginTop={1}>
         <For each={rows()}>
           {(row) => (
             <text>
-              <For each={row.pixels}>
-                {(p) => <span style={{ fg: p.fg, bg: p.bg }}>▀</span>}
-              </For>
+              <For each={row.pixels}>{(p) => <span style={{ fg: p.fg, bg: p.bg }}>▀</span>}</For>
             </text>
           )}
         </For>
